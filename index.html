@@ -338,7 +338,8 @@ function onKeyDown(e){
   kbInput(dir);
 }
 function kbInput(dir){
-  if(kbDone){ clearTimeout(kbTimer); clearLit(); kbBuf=[]; kbDone=false; }   // a fresh input after a completed combo
+  clearTimeout(kbTimer);                       // any keypress cancels a pending auto-reset
+  if(kbDone){ clearLit(); kbBuf=[]; kbDone=false; }   // a fresh input after a completed combo
   kbBuf.push(dir);
   const b=kbBuf.join('');
   const rows=playRows();
@@ -357,8 +358,9 @@ function kbInput(dir){
     completed.forEach(r=>{ r.arrows.forEach(a=>a.classList.add('lit','done')); r.el.classList.add('done'); });
     playConfirm();
     kbDone=true;
-    clearTimeout(kbTimer);
     kbTimer=setTimeout(()=>{ clearLit(); kbBuf=[]; kbDone=false; },500);  // success state clears after 0.5s
+  } else {                                     // partial input in progress
+    kbTimer=setTimeout(()=>{ clearLit(); kbBuf=[]; },3000);  // idle 3s with no key -> reset to blank
   }
 }
 function kbFail(){
