@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0a0a0b">
+<title>HELLDIVERS 2 · 戰略配備指令</title>
+<script src="data.js"></script>
+<style>
+  :root{
+    --yellow:#ffe606;--bg:#0a0a0b;--panel:#151518;--panel2:#1d1d21;
+    --line:#2d2d33;--text:#f4f4f4;--dim:#85858c;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;height:100%;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang TC","PingFang SC","Noto Sans TC","Noto Sans JP","Noto Sans KR",sans-serif;}
+  body{overscroll-behavior:none;-webkit-user-select:none;user-select:none;}
+  .hidden{display:none !important;}
+  .hazard{background:repeating-linear-gradient(-45deg,var(--yellow) 0 12px,#0a0a0b 12px 24px);}
+
+  /* ===== language select (shared) ===== */
+  .langsel{position:relative;display:inline-flex;align-items:center;
+    background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:5px 8px;}
+  .langsel::before{content:"🌐";font-size:12px;margin-right:4px;}
+  .langsel select{appearance:none;background:transparent;border:none;color:var(--text);
+    font-size:12px;font-weight:700;padding-right:14px;outline:none;letter-spacing:.5px;}
+  .langsel::after{content:"▾";position:absolute;right:7px;color:var(--dim);font-size:11px;pointer-events:none;}
+
+  /* ================= SELECT SCREEN ================= */
+  #select{min-height:100%;display:flex;flex-direction:column;}
+  header{position:sticky;top:0;z-index:20;background:rgba(10,10,11,.94);backdrop-filter:blur(10px);
+    border-bottom:2px solid var(--yellow);}
+  .hbar{height:5px;}
+  .hwrap{display:flex;align-items:center;gap:10px;padding:11px 13px 10px;}
+  .brand{display:flex;flex-direction:column;line-height:1;}
+  .brand .b1{font-size:10px;letter-spacing:3px;color:var(--dim);font-weight:800;}
+  .brand .b2{font-size:17px;letter-spacing:1px;color:var(--yellow);font-weight:900;margin-top:3px;text-transform:uppercase;}
+  .count{margin-left:auto;font-size:14px;font-weight:900;color:#000;background:var(--yellow);
+    padding:5px 10px;border-radius:5px;min-width:50px;text-align:center;font-variant-numeric:tabular-nums;}
+
+  #list{padding:2px 12px 118px;max-width:1000px;margin:0 auto;width:100%;}
+  .group{margin-top:4px;}
+  .ghead{display:flex;align-items:center;gap:9px;padding:16px 2px 9px;}
+  .gdot{width:14px;height:14px;border-radius:3px;flex:0 0 auto;}
+  .glabel{font-size:13px;font-weight:900;letter-spacing:1.5px;text-transform:uppercase;color:#eaeaea;}
+  .gcount{font-size:11px;color:var(--dim);font-weight:700;}
+  .gline{flex:1;height:1px;background:var(--line);}
+  .ggrid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;}
+  @media(min-width:560px){.ggrid{grid-template-columns:repeat(3,1fr);}}
+  @media(min-width:820px){.ggrid{grid-template-columns:repeat(4,1fr);}}
+  @media(min-width:1040px){.ggrid{grid-template-columns:repeat(5,1fr);}}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px;
+    display:flex;flex-direction:column;gap:6px;position:relative;min-height:112px;overflow:hidden;
+    transition:transform .05s;}
+  .card:active{transform:scale(.97);}
+  .card.sel{border-color:var(--yellow);background:#1c1a0b;box-shadow:0 0 0 1px var(--yellow) inset;}
+  .card .ico{width:34px;height:34px;object-fit:contain;display:block;margin-top:2px;}
+  .card .cn{font-size:13.5px;font-weight:800;line-height:1.2;}
+  .card .en{font-size:9.5px;color:var(--dim);line-height:1.15;letter-spacing:.3px;text-transform:uppercase;margin-top:auto;}
+  .check{position:absolute;top:7px;right:7px;width:22px;height:22px;border-radius:4px;background:var(--yellow);
+    color:#000;font-size:15px;font-weight:900;display:none;align-items:center;justify-content:center;}
+  .card.sel .check{display:flex;}
+
+  .footer{position:fixed;left:0;right:0;bottom:0;z-index:30;
+    padding:14px 14px calc(14px + env(safe-area-inset-bottom));
+    background:linear-gradient(to top,#0a0a0b 60%,rgba(10,10,11,0));}
+  .footer .fwrap{max-width:1000px;margin:0 auto;}
+  .btn{width:100%;padding:16px;border:none;border-radius:6px;font-size:16px;font-weight:900;
+    letter-spacing:3px;text-transform:uppercase;background:var(--yellow);color:#000;
+    clip-path:polygon(0 0,100% 0,100% 100%,10px 100%,0 calc(100% - 10px));}
+  .btn:disabled{background:#333338;color:#75757b;}
+
+  .ar svg{width:100%;height:100%;display:block;fill:currentColor;}
+
+  /* ================= PLAY SCREEN ================= */
+  #play{position:fixed;inset:0;z-index:50;background:
+      radial-gradient(120% 90% at 50% -10%,#191a1f 0%,#0a0a0b 60%);
+    display:flex;flex-direction:column;}
+  .ptop{height:6px;flex:0 0 auto;}
+  .pbar{display:flex;align-items:center;gap:10px;padding:10px 14px;flex:0 0 auto;border-bottom:1px solid var(--line);}
+  .pbar .back{font-size:13px;color:var(--yellow);font-weight:800;background:none;border:1px solid var(--line);
+    border-radius:5px;padding:7px 12px;letter-spacing:1px;text-transform:uppercase;}
+  .pbar .ptitle{flex:1;text-align:center;font-size:12px;color:var(--dim);letter-spacing:3px;
+    text-transform:uppercase;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;}
+  @media(max-width:520px){.pbar .ptitle{display:none;}}
+  .pbar .right{flex:0 0 auto;}
+
+  /* fixed-height rows, stacked top-to-bottom, single column (even on desktop),
+     scrolls when they don't all fit. */
+  #playList{flex:1;display:flex;flex-direction:column;gap:8px;overflow-y:auto;
+    padding:12px 12px calc(14px + env(safe-area-inset-bottom));
+    width:100%;max-width:720px;margin:0 auto;}
+  .prow{flex:0 0 auto;height:clamp(74px,11.5vh,108px);display:flex;align-items:center;gap:min(4vw,20px);
+    background:var(--panel);border:1px solid var(--line);border-radius:10px;
+    padding:0 min(4vw,18px);position:relative;overflow:hidden;}
+  .prow .pico{height:clamp(42px,min(16vw,12vh),76px);width:auto;aspect-ratio:1;object-fit:contain;flex:0 0 auto;}
+  .prow .pmid{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:clamp(2px,1vh,6px);}
+  .prow .pcn{font-size:clamp(13px,min(3.6vw,4.6vh),20px);font-weight:800;line-height:1.1;letter-spacing:.3px;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+  .prow .pen{font-size:clamp(8px,min(1.7vw,2.2vh),11px);color:var(--dim);letter-spacing:1px;text-transform:uppercase;
+    line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .prow .parrows{display:flex;gap:clamp(3px,1.4vw,9px);align-items:center;flex-wrap:wrap;margin-top:1px;}
+  .prow .ar{width:clamp(17px,min(6.4vw,8vh),34px);height:clamp(17px,min(6.4vw,8vh),34px);color:#fff;flex:0 0 auto;
+    filter:drop-shadow(0 1px 1px rgba(0,0,0,.6));}
+  .prow .pnum{position:absolute;top:5px;right:8px;font-size:11px;font-weight:800;color:#34343a;}
+</style>
+</head>
+<body>
+
+<!-- ============ SELECT ============ -->
+<div id="select">
+  <header>
+    <div class="hbar hazard"></div>
+    <div class="hwrap">
+      <div class="brand">
+        <span class="b1">HELLDIVERS 2</span>
+        <span class="b2" id="t-title">STRATAGEMS</span>
+      </div>
+      <div class="langsel"><select id="langSelect"></select></div>
+      <div class="count" id="count">0 / 4</div>
+    </div>
+  </header>
+  <div id="list"></div>
+  <div class="footer"><div class="fwrap">
+    <button class="btn" id="startBtn" disabled onclick="startGame()">LAUNCH</button>
+  </div></div>
+</div>
+
+<!-- ============ PLAY ============ -->
+<div id="play" class="hidden">
+  <div class="ptop hazard"></div>
+  <div class="pbar">
+    <button class="back" onclick="backToSelect()" id="t-back">‹ RESELECT</button>
+    <div class="ptitle" id="t-ptitle">STRATAGEM CODES</div>
+    <div class="right langsel"><select id="langSelect2"></select></div>
+  </div>
+  <div id="playList"></div>
+</div>
+
+<script>
+/* ---------- language (auto-follows system unless manually changed) ---------- */
+function detectLang(){
+  const saved=localStorage.getItem('hd2lang');
+  if(saved && I18N[saved]) return saved;
+  const n=(navigator.language||navigator.userLanguage||'en');
+  if(/^zh.*(TW|Hant|HK|MO)/i.test(n)) return 'zh-Hant';
+  if(/^zh/i.test(n)) return 'zh-Hans';
+  if(/^pt.*BR/i.test(n)) return 'pt-BR';
+  if(/^es.*(419|MX|AR|CL|CO|PE)/i.test(n)) return 'es-419';
+  const base=n.slice(0,2).toLowerCase();
+  const map={ja:'ja',ko:'ko',fr:'fr',de:'de',it:'it',pt:'pt-BR',ru:'ru',pl:'pl',es:'es',en:'en'};
+  return map[base]||'en';
+}
+let LANG=detectLang();
+function T(){ return I18N[LANG]||I18N['en']; }
+function nameOf(s){ return (s.t && (s.t[LANG]||s.t.en)) || s.en; }
+function groupLabel(g){ return GROUPS.label[g][LANG] || GROUPS.label[g].en; }
+
+/* ---------- arrows ---------- */
+const ROT={U:0,R:90,D:180,L:270};
+function arw(dir){
+  return `<span class="ar"><svg viewBox="0 0 24 24" style="transform:rotate(${ROT[dir]}deg)"><path d="M12 3L21 12h-6v9H9v-9H3z"/></svg></span>`;
+}
+function arwRow(code){ return code.split('').map(arw).join(''); }
+
+/* ---------- state ---------- */
+let selected=[];      // array of en ids
+/* hidden from the selection grid — auto-managed on the play screen */
+const NON_SELECTABLE=['Reinforce','Resupply','SOS Beacon','Eagle Rearm'];
+/* returns the leading stratagems always/conditionally shown on the play screen */
+function leadIds(){
+  const lead=['Reinforce','Resupply'];
+  const pickedEagle=selected.some(id=>{const s=STRATS.find(x=>x.en===id);return s&&s.cat==='eagle';});
+  if(pickedEagle) lead.push('Eagle Rearm');   // Eagle Rearm only when an Eagle is picked
+  return lead;
+}
+
+/* ---------- language dropdowns ---------- */
+function buildLangSelects(){
+  [document.getElementById('langSelect'),document.getElementById('langSelect2')].forEach(sel=>{
+    sel.innerHTML=LANGS.map(l=>`<option value="${l.code}">${l.label}</option>`).join('');
+    sel.value=LANG;
+    sel.onchange=()=>setLang(sel.value);
+  });
+}
+function setLang(code){
+  LANG=code; localStorage.setItem('hd2lang',code);
+  document.documentElement.lang=code;
+  document.getElementById('langSelect').value=code;
+  document.getElementById('langSelect2').value=code;
+  applyStatic(); render(); updateCount();
+  if(!document.getElementById('play').classList.contains('hidden')) renderPlay();
+}
+function applyStatic(){
+  const tt=T();
+  document.getElementById('t-title').textContent=tt.title;
+  document.getElementById('t-back').textContent='‹ '+tt.back;
+  document.getElementById('t-ptitle').textContent=tt.title;
+}
+
+/* ---------- selection list, grouped by official icon colour ---------- */
+const listEl=document.getElementById('list');
+function cardHTML(s){
+  const nm=nameOf(s);
+  const showEn = LANG!=='en' && nm!==s.en;
+  return `<div class="card${selected.includes(s.en)?' sel':''}" data-en="${s.en.replace(/"/g,'&quot;')}">
+      <span class="check">✓</span>
+      <img class="ico" src="icons/${s.icon}.svg" alt="" loading="lazy">
+      <div class="cn">${nm}</div>
+      ${showEn?`<div class="en">${s.en}</div>`:''}
+    </div>`;
+}
+function render(){
+  let html='';
+  GROUPS.order.forEach(g=>{
+    const items=STRATS.filter(s=>s.color===g && !NON_SELECTABLE.includes(s.en));
+    if(!items.length) return;
+    html+=`<div class="group">
+      <div class="ghead">
+        <span class="gdot" style="background:${GROUPS.color[g]}"></span>
+        <span class="glabel">${groupLabel(g)}</span>
+        <span class="gcount">${items.length}</span>
+        <span class="gline"></span>
+      </div>
+      <div class="ggrid">${items.map(cardHTML).join('')}</div>
+    </div>`;
+  });
+  listEl.innerHTML=html;
+  listEl.querySelectorAll('.card').forEach(c=>c.onclick=()=>toggle(c.dataset.en));
+}
+function toggle(id){
+  const i=selected.indexOf(id);
+  if(i>=0) selected.splice(i,1);
+  else{ if(selected.length>=4){bump();return;} selected.push(id); }
+  updateCount(); render();
+}
+function bump(){
+  const c=document.getElementById('count');
+  c.animate([{transform:'scale(1)'},{transform:'scale(1.25)'},{transform:'scale(1)'}],{duration:220});
+}
+function updateCount(){
+  document.getElementById('count').textContent=selected.length+' / 4';
+  const btn=document.getElementById('startBtn');
+  btn.disabled=selected.length===0;
+  btn.textContent=selected.length===0 ? T().hint : T().start;
+}
+
+/* ---------- play ---------- */
+function startGame(){
+  if(!selected.length) return;
+  renderPlay();
+  document.getElementById('select').classList.add('hidden');
+  document.getElementById('play').classList.remove('hidden');
+  window.scrollTo(0,0);
+  // push a history entry so the browser Back button / iPhone swipe-back
+  // returns to the list instead of leaving the page
+  history.pushState({screen:'play'},'');
+}
+function showSelect(){
+  document.getElementById('play').classList.add('hidden');
+  document.getElementById('select').classList.remove('hidden');
+}
+/* Back / swipe-back gesture while on the play screen -> return to the list */
+window.addEventListener('popstate',()=>{
+  if(!document.getElementById('play').classList.contains('hidden')) showSelect();
+});
+function renderPlay(){
+  const list=document.getElementById('playList');
+  const lead=leadIds();
+  const ids=[...lead, ...selected.filter(x=>!lead.includes(x))];
+  list.innerHTML=ids.map((id,idx)=>{
+    const s=STRATS.find(x=>x.en===id); if(!s) return '';
+    const nm=nameOf(s);
+    const showEn = LANG!=='en' && nm!==s.en;
+    return `<div class="prow">
+      <span class="pnum">${idx+1}</span>
+      <img class="pico" src="icons/${s.icon}.svg" alt="">
+      <div class="pmid">
+        <div class="pcn">${nm}</div>
+        ${showEn?`<div class="pen">${s.en}</div>`:''}
+        <div class="parrows">${arwRow(s.code)}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+function backToSelect(){
+  // go through history so the state stays in sync with the Back gesture
+  if(history.state && history.state.screen==='play') history.back();
+  else showSelect();
+}
+
+/* ---------- init ---------- */
+buildLangSelects(); applyStatic(); render(); updateCount();
+</script>
+</body>
+</html>
