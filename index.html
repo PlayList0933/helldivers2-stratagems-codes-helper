@@ -67,7 +67,11 @@
   .footer{position:fixed;left:0;right:0;bottom:0;z-index:30;
     padding:14px 14px calc(14px + env(safe-area-inset-bottom));
     background:linear-gradient(to top,#0a0a0b 60%,rgba(10,10,11,0));}
-  .footer .fwrap{max-width:1000px;margin:0 auto;}
+  .footer .fwrap{max-width:1000px;margin:0 auto;display:flex;gap:10px;}
+  #startBtn{flex:1;}
+  .btn.clearbtn{flex:0 0 auto;width:auto;background:var(--panel2);color:var(--text);
+    border:1px solid var(--line);clip-path:none;padding:16px 20px;letter-spacing:2px;}
+  .btn.clearbtn:active{transform:scale(.97);}
   .btn{width:100%;padding:16px;border:none;border-radius:6px;font-size:16px;font-weight:900;
     letter-spacing:3px;text-transform:uppercase;background:var(--yellow);color:#000;
     clip-path:polygon(0 0,100% 0,100% 100%,10px 100%,0 calc(100% - 10px));}
@@ -137,6 +141,7 @@
   </header>
   <div id="list"></div>
   <div class="footer"><div class="fwrap">
+    <button class="btn clearbtn hidden" id="clearBtn" onclick="clearAll()">CLEAR</button>
     <button class="btn" id="startBtn" disabled onclick="startGame()">LAUNCH</button>
   </div></div>
 </div>
@@ -254,11 +259,17 @@ function bump(){
   const c=document.getElementById('count');
   c.animate([{transform:'scale(1)'},{transform:'scale(1.25)'},{transform:'scale(1)'}],{duration:220});
 }
+const CLEAR_LABEL={'zh-Hant':'清除全部','zh-Hans':'清除全部','en':'CLEAR','ja':'クリア','ko':'초기화',
+  'fr':'EFFACER','de':'LÖSCHEN','it':'CANCELLA','es':'BORRAR','es-419':'BORRAR','pt-BR':'LIMPAR','ru':'ОЧИСТИТЬ','pl':'WYCZYŚĆ'};
+function clearAll(){ selected=[]; updateCount(); render(); }
 function updateCount(){
   document.getElementById('count').textContent=selected.length+' / 4';
   const btn=document.getElementById('startBtn');
   btn.disabled=selected.length===0;
   btn.textContent=selected.length===0 ? T().hint : T().start;
+  const clr=document.getElementById('clearBtn');
+  clr.textContent=CLEAR_LABEL[LANG]||CLEAR_LABEL.en;
+  clr.classList.toggle('hidden', selected.length===0);   // only shown once something is selected
 }
 
 /* ---------- play ---------- */
