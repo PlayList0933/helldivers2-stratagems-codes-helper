@@ -308,8 +308,8 @@ function backToSelect(){
 
 /* ---------- desktop keyboard input (Stratagem Hero style) ---------- */
 const KEYMAP={ArrowUp:'U',KeyW:'U',ArrowDown:'D',KeyS:'D',ArrowLeft:'L',KeyA:'L',ArrowRight:'R',KeyD:'R'};
-let kbBuf=[], kbDone=false;
-function kbReset(){ kbBuf=[]; kbDone=false; clearLit(); }
+let kbBuf=[], kbDone=false, kbTimer=null;
+function kbReset(){ clearTimeout(kbTimer); kbBuf=[]; kbDone=false; clearLit(); }
 function playRows(){
   return [...document.querySelectorAll('#playList .prow')].map(el=>({
     el, code:el.dataset.code||'', arrows:[...el.querySelectorAll('.ar')]
@@ -327,7 +327,7 @@ function onKeyDown(e){
   kbInput(dir);
 }
 function kbInput(dir){
-  if(kbDone){ clearLit(); kbBuf=[]; kbDone=false; }   // a fresh input after a completed combo
+  if(kbDone){ clearTimeout(kbTimer); clearLit(); kbBuf=[]; kbDone=false; }   // a fresh input after a completed combo
   kbBuf.push(dir);
   const b=kbBuf.join('');
   const rows=playRows();
@@ -346,6 +346,8 @@ function kbInput(dir){
     completed.forEach(r=>{ r.arrows.forEach(a=>a.classList.add('lit','done')); r.el.classList.add('done'); });
     playConfirm();
     kbDone=true;
+    clearTimeout(kbTimer);
+    kbTimer=setTimeout(()=>{ clearLit(); kbBuf=[]; kbDone=false; },500);  // success state clears after 0.5s
   }
 }
 function kbFail(){
