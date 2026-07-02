@@ -106,6 +106,18 @@
   .prow .ar{width:clamp(17px,min(6.4vw,8vh),34px);height:clamp(17px,min(6.4vw,8vh),34px);color:#fff;flex:0 0 auto;
     filter:drop-shadow(0 1px 1px rgba(0,0,0,.6));}
   .prow .pnum{position:absolute;top:5px;right:8px;font-size:11px;font-weight:800;color:#34343a;}
+
+  /* ---- keyboard input feedback (desktop) ---- */
+  .prow .ar{transition:transform .08s ease,color .08s ease,filter .08s ease;}
+  .prow .ar.lit{color:var(--yellow);transform:scale(1.1);}
+  .prow .ar.done{color:var(--yellow);filter:drop-shadow(0 0 7px rgba(255,230,6,.75));}
+  .prow.done{border-color:var(--yellow);box-shadow:0 0 0 1px var(--yellow) inset;}
+  @keyframes hd-shake{0%,100%{transform:translateX(0)}15%{transform:translateX(-5px)}30%{transform:translateX(5px)}
+    45%{transform:translateX(-4px)}60%{transform:translateX(4px)}80%{transform:translateX(-2px)}}
+  .shake{animation:hd-shake .5s ease;}
+  #khint{flex:0 0 auto;display:none;text-align:center;color:var(--dim);font-size:12px;font-weight:700;
+    letter-spacing:2px;padding:2px 10px calc(10px + env(safe-area-inset-bottom));}
+  @media(pointer:fine){#khint{display:block;}}
 </style>
 </head>
 <body>
@@ -138,6 +150,7 @@
     <div class="right langsel"><select id="langSelect2"></select></div>
   </div>
   <div id="playList"></div>
+  <div id="khint">⌨ ↑ ↓ ← →　·　W A S D</div>
 </div>
 
 <script>
@@ -275,7 +288,7 @@ function renderPlay(){
     const s=STRATS.find(x=>x.en===id); if(!s) return '';
     const nm=nameOf(s);
     const showEn = LANG!=='en' && nm!==s.en;
-    return `<div class="prow">
+    return `<div class="prow" data-code="${s.code}">
       <span class="pnum">${idx+1}</span>
       <img class="pico" src="icons/${s.icon}.svg" alt="">
       <div class="pmid">
@@ -285,12 +298,81 @@ function renderPlay(){
       </div>
     </div>`;
   }).join('');
+  kbReset();
 }
 function backToSelect(){
   // go through history so the state stays in sync with the Back gesture
   if(history.state && history.state.screen==='play') history.back();
   else showSelect();
 }
+
+/* ---------- desktop keyboard input (Stratagem Hero style) ---------- */
+const KEYMAP={ArrowUp:'U',KeyW:'U',ArrowDown:'D',KeyS:'D',ArrowLeft:'L',KeyA:'L',ArrowRight:'R',KeyD:'R'};
+let kbBuf=[], kbDone=false;
+function kbReset(){ kbBuf=[]; kbDone=false; clearLit(); }
+function playRows(){
+  return [...document.querySelectorAll('#playList .prow')].map(el=>({
+    el, code:el.dataset.code||'', arrows:[...el.querySelectorAll('.ar')]
+  }));
+}
+function clearLit(){
+  document.querySelectorAll('#playList .ar').forEach(a=>a.classList.remove('lit','done'));
+  document.querySelectorAll('#playList .prow').forEach(p=>p.classList.remove('done'));
+}
+function onKeyDown(e){
+  if(document.getElementById('play').classList.contains('hidden')) return;
+  const dir=KEYMAP[e.code]; if(!dir) return;
+  e.preventDefault();
+  if(e.repeat) return;
+  kbInput(dir);
+}
+function kbInput(dir){
+  if(kbDone){ clearLit(); kbBuf=[]; kbDone=false; }   // a fresh input after a completed combo
+  kbBuf.push(dir);
+  const b=kbBuf.join('');
+  const rows=playRows();
+  let anyPrefix=false; const completed=[];
+  rows.forEach(r=>{
+    r.arrows.forEach(a=>a.classList.remove('lit','done'));
+    r.el.classList.remove('done');
+    if(r.code.startsWith(b)){                 // left-to-right prefix match
+      anyPrefix=true;
+      for(let i=0;i<b.length && i<r.arrows.length;i++) r.arrows[i].classList.add('lit');
+      if(r.code===b) completed.push(r);
+    }
+  });
+  if(!anyPrefix){ kbFail(); return; }         // input matches nothing -> shake + reset
+  if(completed.length){                       // one (or more) fully entered
+    completed.forEach(r=>{ r.arrows.forEach(a=>a.classList.add('lit','done')); r.el.classList.add('done'); });
+    playConfirm();
+    kbDone=true;
+  }
+}
+function kbFail(){
+  kbBuf=[]; clearLit();
+  const els=[...document.querySelectorAll('#playList .prow'),...document.querySelectorAll('#playList .ar')];
+  els.forEach(el=>{ el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); });
+  setTimeout(()=>document.querySelectorAll('#playList .shake').forEach(el=>el.classList.remove('shake')),520);
+  playFail();
+}
+/* ---- synthesized sound effects (no copyrighted game audio) ---- */
+let _actx=null;
+function actx(){ if(!_actx) _actx=new (window.AudioContext||window.webkitAudioContext)();
+  if(_actx.state==='suspended') _actx.resume(); return _actx; }
+function tone(c,f,t,d,type,g){ const o=c.createOscillator(),v=c.createGain();
+  o.type=type; o.frequency.value=f; o.connect(v); v.connect(c.destination);
+  v.gain.setValueAtTime(0.0001,t); v.gain.exponentialRampToValueAtTime(g,t+0.01);
+  v.gain.exponentialRampToValueAtTime(0.0001,t+d); o.start(t); o.stop(t+d+0.02); }
+function boom(c,t){ const buf=c.createBuffer(1,Math.floor(c.sampleRate*0.45),c.sampleRate),d=buf.getChannelData(0);
+  for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,2);
+  const s=c.createBufferSource(); s.buffer=buf; const lp=c.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=480;
+  const v=c.createGain(); v.gain.setValueAtTime(0.55,t); v.gain.exponentialRampToValueAtTime(0.0001,t+0.45);
+  s.connect(lp); lp.connect(v); v.connect(c.destination); s.start(t); }
+function playConfirm(){ try{ const c=actx(),t=c.currentTime;
+  [1046,1318,1568].forEach((f,i)=>tone(c,f,t+i*0.06,0.1,'square',0.12)); boom(c,t+0.18);}catch(e){} }
+function playFail(){ try{ const c=actx(),t=c.currentTime;
+  tone(c,196,t,0.16,'sawtooth',0.14); tone(c,138,t+0.06,0.2,'sawtooth',0.12);}catch(e){} }
+window.addEventListener('keydown',onKeyDown);
 
 /* ---------- init ---------- */
 buildLangSelects(); applyStatic(); render(); updateCount();
